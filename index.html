@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Lotus Sutra Matrix · v0.6 -->
+<!-- Lotus Sutra Matrix · v0.7 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="v0.6">
+<meta name="version" content="v0.7">
 <title>The Lotus Sūtra · Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -407,7 +407,7 @@
     <span class="divider"></span>
     <span class="meta">The Lotus Sūtra · Outline</span>
     <span class="divider"></span>
-    <span class="meta" id="versionTag">v0.6</span>
+    <span class="meta" id="versionTag">v0.7</span>
   </div>
 
   <div class="hero">
@@ -431,7 +431,7 @@
     <div class="ctrl-divider"></div>
     <div class="ctrl-group">
       <button class="btn" id="collapseAll">Collapse all</button>
-      <button class="btn" id="exposeAll">Expose all</button>
+      <button class="btn" id="exposeAll">Reveal all</button>
     </div>
   </div>
 
@@ -536,10 +536,6 @@
     document.querySelectorAll('li.node.has-children').forEach(li => {
       const nd = parseInt(li.dataset.d, 10);
       li.classList.toggle('open', nd < d);
-    });
-    document.querySelectorAll('li.node').forEach(li => {
-      const nd = parseInt(li.dataset.d, 10);
-      li.style.display = (nd <= d) ? '' : 'none';
     });
   }
   depthEl.addEventListener('input', e => applyDepth(parseInt(e.target.value, 10)));
