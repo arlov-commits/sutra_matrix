@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sutra Matrix · Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0d0a14;
+    --bg-mid: #14111c;
+    --bg-card: #1a1722;
+    --line: rgba(220,200,160,0.10);
+    --line-strong: rgba(220,200,160,0.22);
+    --gold: #d4b870;
+    --gold-bright: #ecd494;
+    --ink: #ece6d6;
+    --ink-soft: #b9b3a3;
+    --ink-dim: #7d7868;
+    --ink-faint: #4f4d44;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg-deep);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 1000px 700px at 30% 0%, rgba(127,219,222,0.05), transparent 60%),
+      radial-gradient(ellipse 1000px 700px at 70% 100%, rgba(232,184,96,0.06), transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+  .app {
+    position: relative; z-index: 1;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 72px 48px 96px;
+  }
+
+  .crest {
+    display: flex; align-items: center; gap: 14px;
+    color: var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+  .crest svg { width: 22px; height: 22px; }
+  .crest .divider { flex: 0 0 32px; height: 1px; background: var(--line-strong); }
+
+  h1.title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: clamp(48px, 6vw, 76px);
+    line-height: 1.0;
+    letter-spacing: -0.015em;
+    margin: 0;
+    color: var(--ink);
+  }
+  h1.title .accent { font-style: italic; color: var(--gold-bright); font-weight: 400; }
+  .subtitle {
+    margin-top: 18px;
+    color: var(--ink-soft);
+    font-size: 16px;
+    max-width: 64ch;
+    font-weight: 300;
+  }
+  .subtitle em { color: var(--gold); font-style: normal; font-weight: 500; }
+
+  .meta-rule {
+    margin: 56px 0 28px;
+    display: flex; align-items: center; gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+  .meta-rule .line { flex: 1; height: 1px; background: var(--line); }
+
+  /* Tile grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+  }
+
+  /* Sutra tile — entire card is the link */
+  .tile {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 28px;
+    padding: 32px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(26,23,34,0.7), rgba(13,10,20,0.4));
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .tile.lotus {
+    background:
+      radial-gradient(ellipse 600px 400px at 100% 0%, rgba(127,219,222,0.08), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 0% 100%, rgba(212,175,110,0.10), transparent 60%),
+      linear-gradient(180deg, rgba(26,31,46,0.7), rgba(11,13,20,0.4));
+    border-color: rgba(212,175,110,0.18);
+  }
+  .tile.earth {
+    background:
+      radial-gradient(ellipse 600px 400px at 100% 0%, rgba(232,184,96,0.12), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 0% 100%, rgba(94,168,138,0.08), transparent 60%),
+      linear-gradient(180deg, rgba(50,31,37,0.7), rgba(26,15,18,0.4));
+    border-color: rgba(232,184,96,0.20);
+  }
+  .tile.ten-grounds {
+    background:
+      radial-gradient(ellipse 600px 400px at 100% 0%, rgba(127,200,178,0.12), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 0% 100%, rgba(212,158,90,0.08), transparent 60%),
+      linear-gradient(180deg, rgba(19,30,35,0.7), rgba(13,20,24,0.4));
+    border-color: rgba(127,200,178,0.22);
+  }
+  .tile.pending {
+    cursor: default;
+    opacity: 0.85;
+  }
+  .tile.pending:hover { transform: none; box-shadow: none; }
+  .tile:hover {
+    transform: translateY(-2px);
+    border-color: rgba(232,212,148,0.45);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(232,212,148,0.12);
+  }
+  .tile:hover .arrow { transform: translateX(4px); color: var(--gold-bright); }
+
+  /* Emblem */
+  .emblem {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .emblem.lotus {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(127,219,222,0.15), transparent 60%),
+      linear-gradient(135deg, #11141d, #1a1f2e);
+    border: 1px solid rgba(212,175,110,0.25);
+  }
+  .emblem.earth {
+    background:
+      radial-gradient(circle at 50% 40%, rgba(232,184,96,0.30), transparent 60%),
+      linear-gradient(135deg, #1a0f12, #2a1a1f);
+    border: 1px solid rgba(232,184,96,0.30);
+  }
+  .emblem.ten-grounds {
+    background:
+      radial-gradient(circle at 50% 35%, rgba(127,200,178,0.28), transparent 60%),
+      linear-gradient(135deg, #0d1418, #1a262c);
+    border: 1px solid rgba(127,200,178,0.30);
+  }
+  .emblem svg { width: 86%; height: 86%; }
+
+  .tile-body { display: flex; flex-direction: column; min-width: 0; }
+
+  .sutra-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+  .tile.earth .sutra-meta { color: #e8b860; }
+  .tile.ten-grounds .sutra-meta { color: #7fc8b2; }
+
+  .sutra-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.05;
+    margin: 0 0 8px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .sutra-name .ital { font-style: italic; }
+  .tile.lotus .sutra-name .ital { color: #e8c987; }
+  .tile.earth .sutra-name .ital { color: #f5d089; }
+  .tile.ten-grounds .sutra-name .ital { color: #a8e0cd; }
+
+  .sutra-tag {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 15px;
+    margin: 0 0 18px;
+    line-height: 1.5;
+    font-weight: 400;
+    flex: 1;
+  }
+
+  .tile-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .stats {
+    display: flex; gap: 22px;
+  }
+  .stat .num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--gold-bright);
+    font-weight: 500;
+  }
+  .tile.earth .stat .num { color: #f5d089; }
+  .tile.ten-grounds .stat .num { color: #a8e0cd; }
+  .stat .lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-top: 4px;
+  }
+  .stat .sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2px;
+  }
+
+  .arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--gold);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+  .arrow svg { width: 14px; height: 14px; }
+  .tile.earth .arrow { color: #e8b860; }
+  .tile.ten-grounds .arrow { color: #7fc8b2; }
+  .arrow.pending-tag {
+    color: var(--ink-dim);
+    border: 1px dashed var(--line-strong);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 9px;
+  }
+
+  /* Add-sutra placeholder — styled as tile */
+  .add-tile {
+    border: 1px dashed var(--line-strong);
+    border-radius: 16px;
+    padding: 32px;
+    color: var(--ink-dim);
+    background: transparent;
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+  .add-tile .lg {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    font-style: italic;
+  }
+  .add-tile p { margin: 0; max-width: 64ch; margin-left: auto; margin-right: auto; font-size: 13px; }
+  .add-tile code {
+    background: var(--bg-card);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--gold);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  footer {
+    margin-top: 88px;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  footer .om {
+    color: var(--gold);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .app { padding: 32px 20px 64px; }
+    .tile { grid-template-columns: 1fr; gap: 20px; padding: 24px; }
+    .emblem { max-width: 200px; margin: 0 auto; }
+    .sutra-name { font-size: 26px; }
+    .tile-foot { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="crest">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <circle cx="12" cy="12" r="11"/>
+      <circle cx="12" cy="12" r="7"/>
+      <circle cx="12" cy="12" r="3"/>
+      <line x1="12" y1="1" x2="12" y2="23"/>
+      <line x1="1" y1="12" x2="23" y2="12"/>
+    </svg>
+    <span>Sutra Matrix</span>
+    <span class="divider"></span>
+    <span style="color:var(--ink-dim)">Mahā­yāna · Outline System</span>
+  </div>
+
+  <h1 class="title">A library of <span class="accent">sūtras</span>,<br>opened layer by layer.</h1>
+  <p class="subtitle">Each sūtra is rendered as a <em>traversable matrix</em> — a depth-controlled outline you can collapse to chapter titles or expand to the leaf-most exegesis. Choose a sūtra below to enter its matrix.</p>
+
+  <div class="meta-rule">
+    <span>The Library</span>
+    <span class="line"></span>
+    <span style="color:var(--ink-dim)">3 sūtras</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- Lotus — pending OCR -->
+    <div class="tile lotus pending" aria-disabled="true">
+      <div class="emblem lotus">
+        <svg viewBox="0 0 200 200" fill="none" stroke="#d4af6e" stroke-width="0.6">
+          <circle cx="100" cy="100" r="92" opacity="0.4"/>
+          <circle cx="100" cy="100" r="72" opacity="0.5"/>
+          <circle cx="100" cy="100" r="50" opacity="0.6"/>
+          <circle cx="100" cy="100" r="28" opacity="0.7"/>
+          <g transform="translate(100 100)" opacity="0.65">
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(45)"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(90)"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(135)"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(180)"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(225)"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(270)"/>
+            <path d="M0,-30 C18,-60 18,-86 0,-110 C-18,-86 -18,-60 0,-30 Z" transform="rotate(315)"/>
+          </g>
+          <circle cx="100" cy="100" r="6" fill="#e8c987" stroke="none"/>
+        </svg>
+      </div>
+      <div class="tile-body">
+        <div class="sutra-meta">Saddharmapuṇḍarīka · Lotus</div>
+        <h2 class="sutra-name">The <span class="ital">Lotus</span> Sūtra</h2>
+        <p class="sutra-tag">28 chapters of the wonderful Dharma. Outline scans are uploaded but image-only — awaiting OCR before the matrix can be built.</p>
+        <div class="tile-foot">
+          <div class="stats">
+            <div class="stat"><div class="num">28</div><div class="lbl">Chapters</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">Sections</div></div>
+            <div class="stat"><div class="num">—</div><div class="lbl">Depth</div></div>
+          </div>
+          <span class="arrow pending-tag">Pending OCR</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Earth Store -->
+    <a class="tile earth" href="sutras/earth-store/Earth Store Sutra Matrix.html">
+      <div class="emblem earth">
+        <svg viewBox="0 0 200 200" fill="none">
+          <defs>
+            <radialGradient id="eh" cx="50%" cy="42%">
+              <stop offset="0%" stop-color="#f5d089" stop-opacity="0.7"/>
+              <stop offset="60%" stop-color="#e8b860" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#e8b860" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="100" cy="84" r="76" fill="url(#eh)"/>
+          <g fill="#e8b860" opacity="0.85">
+            <circle cx="100" cy="80" r="36" fill="none" stroke="#f5d089" stroke-width="1" opacity="0.7"/>
+            <circle cx="100" cy="76" r="14"/>
+            <path d="M76 110 Q76 96 100 96 Q124 96 124 110 L130 150 Q100 154 70 150 Z"/>
+            <line x1="68" y1="42" x2="68" y2="160" stroke="#e8b860" stroke-width="2.5"/>
+            <circle cx="68" cy="38" r="8" fill="none" stroke="#e8b860" stroke-width="1.5"/>
+            <line x1="62" y1="32" x2="74" y2="44" stroke="#e8b860" stroke-width="1"/>
+            <line x1="74" y1="32" x2="62" y2="44" stroke="#e8b860" stroke-width="1"/>
+          </g>
+          <g fill="#f4e9d4" opacity="0.85">
+            <path d="M100 156 C 70 156 50 168 56 178 C 76 174 124 174 144 178 C 150 168 130 156 100 156 Z"/>
+            <path d="M68 162 C 56 164 50 176 60 180 C 74 178 80 168 78 164 Z" opacity="0.7"/>
+            <path d="M132 162 C 144 164 150 176 140 180 C 126 178 120 168 122 164 Z" opacity="0.7"/>
+          </g>
+          <circle cx="100" cy="120" r="5" fill="#3a6e5c"/>
+          <circle cx="98" cy="118" r="1.5" fill="#87c4a8"/>
+        </svg>
+      </div>
+      <div class="tile-body">
+        <div class="sutra-meta">Kṣitigarbha · Past Vows</div>
+        <h2 class="sutra-name">Earth Store <span class="ital">Bodhisattva</span></h2>
+        <p class="sutra-tag">"Until the hells are empty, I vow not to become a Buddha; only after all living beings are saved will I myself attain Bodhi." The Trayastriṃśa Heaven, the Brahman woman's vow, and the gathering of division bodies.</p>
+        <div class="tile-foot">
+          <div class="stats">
+            <div class="stat"><div class="num">3</div><div class="lbl">Chapters</div><div class="sub">of 13</div></div>
+            <div class="stat"><div class="num">142</div><div class="lbl">Sections</div></div>
+            <div class="stat"><div class="num">7</div><div class="lbl">Depth</div></div>
+          </div>
+          <span class="arrow">
+            Enter
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7 H11 M7 3 L11 7 L7 11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Add-a-sutra placeholder -->
+    <a class="tile ten-grounds" href="sutras/ten-grounds/Ten Grounds Sutra Matrix.html">
+      <div class="emblem ten-grounds">
+        <svg viewBox="0 0 200 200" fill="none">
+          <defs>
+            <radialGradient id="tg" cx="50%" cy="50%">
+              <stop offset="0%" stop-color="#a8e0cd" stop-opacity="0.6"/>
+              <stop offset="60%" stop-color="#7fc8b2" stop-opacity="0.15"/>
+              <stop offset="100%" stop-color="#7fc8b2" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="100" cy="100" r="86" fill="url(#tg)"/>
+          <!-- Ten ascending strata: ground levels rising to a peak -->
+          <g stroke="#7fc8b2" stroke-width="1" fill="none" opacity="0.85">
+            <path d="M30 175 L170 175"/>
+            <path d="M38 162 L162 162" opacity="0.92"/>
+            <path d="M44 149 L156 149" opacity="0.88"/>
+            <path d="M50 136 L150 136" opacity="0.84"/>
+            <path d="M56 123 L144 123" opacity="0.80"/>
+            <path d="M62 110 L138 110" opacity="0.76"/>
+            <path d="M68 97 L132 97" opacity="0.72"/>
+            <path d="M74 84 L126 84" opacity="0.68"/>
+            <path d="M80 71 L120 71" opacity="0.64"/>
+            <path d="M86 58 L114 58" opacity="0.60"/>
+          </g>
+          <!-- Vajra at peak -->
+          <g stroke="#d49e5a" stroke-width="1.4" fill="none" opacity="0.95" transform="translate(100 40)">
+            <line x1="0" y1="-12" x2="0" y2="12"/>
+            <path d="M-6 -12 L0 -18 L6 -12 Z" fill="#d49e5a"/>
+            <path d="M-6 12 L0 18 L6 12 Z" fill="#d49e5a"/>
+            <circle cx="0" cy="0" r="3" fill="#ebbd80" stroke="none"/>
+          </g>
+          <!-- Pillar -->
+          <line x1="100" y1="58" x2="100" y2="175" stroke="#d49e5a" stroke-width="0.6" opacity="0.5" stroke-dasharray="2 3"/>
+        </svg>
+      </div>
+      <div class="tile-body">
+        <div class="sutra-meta">Daśabhūmika · Vajragarbha</div>
+        <h2 class="sutra-name">The <span class="ital">Ten Grounds</span> Sūtra</h2>
+        <p class="sutra-tag">Vajragarbha Bodhisattva, in samādhi, sets forth the ten <em>bhūmis</em> — the stages by which a bodhisattva ascends from joyful awakening to the Dharma cloud, likened to ten mountain kings rising from the ocean of all-knowledge.</p>
+        <div class="tile-foot">
+          <div class="stats">
+            <div class="stat"><div class="num">10</div><div class="lbl">Grounds</div></div>
+            <div class="stat"><div class="num">351</div><div class="lbl">Sections</div></div>
+            <div class="stat"><div class="num">4</div><div class="lbl">Depth</div></div>
+          </div>
+          <span class="arrow">
+            Enter
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7 H11 M7 3 L11 7 L7 11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </div>
+    </a>
+
+    <!-- Add-a-sutra placeholder -->
+    <div class="add-tile">
+      <div class="lg">More sūtras to come.</div>
+      <p>Drop a new outline (markdown, plain-text, or a digital PDF with text-layer) into <code>uploads/</code>, then say <code>sync</code>. I'll add it as a new tile with its own theme. Image-only scans need OCR first.</p>
+    </div>
+
+  </div>
+
+  <footer>
+    <div>Sutra Matrix · Hub</div>
+    <div class="om">oṃ maṇi padme hūṃ</div>
+    <div>build 2026-04-28 02:09 UTC</div>
+  </footer>
+
+</div>
+
+</body>
+</html>
