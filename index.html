@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Lotus Sutra Matrix · v0.7 -->
+<!-- Lotus Sutra Matrix · v0.8 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="v0.7">
+<meta name="version" content="v0.8">
 <title>The Lotus Sūtra · Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -407,7 +407,7 @@
     <span class="divider"></span>
     <span class="meta">The Lotus Sūtra · Outline</span>
     <span class="divider"></span>
-    <span class="meta" id="versionTag">v0.7</span>
+    <span class="meta" id="versionTag">v0.8</span>
   </div>
 
   <div class="hero">
@@ -421,7 +421,7 @@
   <div class="controls">
     <div class="ctrl-group">
       <label for="depth">Depth</label>
-      <input id="depth" type="range" min="1" max="13" value="3" step="1">
+      <input id="depth" type="range" min="1" max="14" value="3" step="1">
       <span class="depth-val" id="depthVal">3</span>
     </div>
     <div class="ctrl-divider"></div>
@@ -458,7 +458,7 @@
 
 <div class="float right top">
   <button class="pill" id="depthDownBtn" title="Collapse one layer">−</button>
-  <span class="pill-readout"><span class="lbl">Lv</span><span id="depthReadoutCur">3</span><span class="of">/</span><span id="depthReadoutMax">13</span></span>
+  <span class="pill-readout"><span class="lbl">Lv</span><span id="depthReadoutCur">3</span><span class="of">/</span><span id="depthReadoutMax">14</span></span>
   <button class="pill" id="depthUpBtn" title="Expand one layer">+</button>
 </div>
 
@@ -479,10 +479,32 @@
   const built = new Date().toISOString().slice(0,10);
   document.getElementById('buildStamp').textContent = `build ${built} · ${DATA.hash}`;
 
+  // Level semantics:
+  //   Lv 1  → all chapters closed (titles only)
+  //   Lv 2  → chapters open, depth-1 items visible (closed)
+  //   Lv N  → items up to depth N-1 visible; nodes open iff their depth ≤ N-2
+  //   Max   → DATA.stats.depth + 1
+  const MAX_LEVEL = DATA.stats.depth + 1;
+
+  // Persisted state
+  const STATE_KEY = 'lotus-matrix-state-v1';
+  const SCALE_KEY = 'lotus-matrix-text-scale';
+  const SIGILS_KEY = 'lotus-matrix-sigils';
+  let state;
+  try {
+    state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+  } catch (_) { state = {}; }
+  if (typeof state.level !== 'number' || state.level < 1 || state.level > MAX_LEVEL) state.level = 3;
+  if (!state.overrides || typeof state.overrides !== 'object') state.overrides = {};
+
+  function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  function renderNode(node) {
+
+  function renderNode(node, parentId) {
+    const id = parentId + '>' + node.label;
     const has = node.children && node.children.length > 0;
     const cls = has ? 'node has-children' : 'node no-children';
     const caret = has ? '▸' : '·';
@@ -490,14 +512,15 @@
     const body = `<span class="body">${escapeHtml(node.body)}</span>`;
     let inner = `<div class="row"><span class="caret">${caret}</span>${label}${body}</div>`;
     if (has) {
-      inner += `<ul class="nodes">${node.children.map(renderNode).join('')}</ul>`;
+      inner += `<ul class="nodes">${node.children.map(c => renderNode(c, id)).join('')}</ul>`;
     }
-    return `<li class="${cls}" data-d="${node.d}">${inner}</li>`;
+    return `<li class="${cls}" data-d="${node.d}" data-id="${escapeHtml(id)}">${inner}</li>`;
   }
   function renderChapter(ch) {
-    const items = ch.children.map(renderNode).join('');
+    const id = 'ch:' + ch.n;
+    const items = ch.children.map(c => renderNode(c, id)).join('');
     return `
-      <section class="chapter" data-chapter="${ch.n}">
+      <section class="chapter" data-chapter="${ch.n}" data-id="${id}">
         <header class="chap-head">
           <span class="chap-caret">▸</span>
           <span class="chap-num">Chapter ${ch.n}</span>
@@ -511,59 +534,108 @@
   }
   document.getElementById('tree').innerHTML = DATA.chapters.map(renderChapter).join('');
 
+  // Effective open-state computation
+  function autoChapterOpen(L) { return L >= 2; }
+  function autoNodeOpen(d, L) { return d <= L - 2; }
+
+  function applyAll() {
+    const L = state.level;
+    document.querySelectorAll('.chapter').forEach(c => {
+      const id = c.dataset.id;
+      const auto = autoChapterOpen(L);
+      const open = (id in state.overrides) ? (state.overrides[id] === 'open') : auto;
+      c.classList.toggle('open', open);
+    });
+    document.querySelectorAll('li.node.has-children').forEach(li => {
+      const id = li.dataset.id;
+      const d = parseInt(li.dataset.d, 10);
+      const auto = autoNodeOpen(d, L);
+      const open = (id in state.overrides) ? (state.overrides[id] === 'open') : auto;
+      li.classList.toggle('open', open);
+    });
+    updateLevelReadout();
+  }
+
+  // Level UI
+  const depthEl = document.getElementById('depth');
+  const depthVal = document.getElementById('depthVal');
+  const depthReadoutCur = document.getElementById('depthReadoutCur');
+  const depthReadoutMax = document.getElementById('depthReadoutMax');
+  depthEl.max = MAX_LEVEL;
+  depthReadoutMax.textContent = MAX_LEVEL;
+
+  function updateLevelReadout() {
+    depthEl.value = state.level;
+    depthVal.textContent = state.level;
+    depthReadoutCur.textContent = state.level;
+  }
+
+  function setLevel(L) {
+    L = Math.max(1, Math.min(MAX_LEVEL, L));
+    state.level = L;
+    saveState();
+    applyAll();
+  }
+
+  depthEl.addEventListener('input', e => setLevel(parseInt(e.target.value, 10)));
+  document.getElementById('depthDownBtn').addEventListener('click', () => setLevel(state.level - 1));
+  document.getElementById('depthUpBtn').addEventListener('click', () => setLevel(state.level + 1));
+
+  // User toggles — record override only when result diverges from auto
+  function recordOverride(id, nowOpen, autoOpen) {
+    if (nowOpen === autoOpen) {
+      delete state.overrides[id];
+    } else {
+      state.overrides[id] = nowOpen ? 'open' : 'closed';
+    }
+    saveState();
+  }
+
   document.querySelectorAll('.chap-head').forEach(h => {
-    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+    h.addEventListener('click', () => {
+      const c = h.parentElement;
+      const id = c.dataset.id;
+      const nowOpen = !c.classList.contains('open');
+      c.classList.toggle('open', nowOpen);
+      recordOverride(id, nowOpen, autoChapterOpen(state.level));
+    });
   });
 
   document.querySelectorAll('li.node.has-children > .row').forEach(r => {
     r.addEventListener('click', e => {
       e.stopPropagation();
-      r.parentElement.classList.toggle('open');
+      const li = r.parentElement;
+      const id = li.dataset.id;
+      const d = parseInt(li.dataset.d, 10);
+      const nowOpen = !li.classList.contains('open');
+      li.classList.toggle('open', nowOpen);
+      recordOverride(id, nowOpen, autoNodeOpen(d, state.level));
     });
   });
 
-  const depthEl = document.getElementById('depth');
-  const depthVal = document.getElementById('depthVal');
-  const depthReadoutCur = document.getElementById('depthReadoutCur');
-  const depthReadoutMax = document.getElementById('depthReadoutMax');
-  depthReadoutMax.textContent = DATA.stats.depth;
-  function applyDepth(d) {
-    d = Math.max(1, Math.min(DATA.stats.depth, d));
-    depthEl.value = d;
-    depthVal.textContent = d;
-    depthReadoutCur.textContent = d;
-    document.querySelectorAll('.chapter').forEach(c => c.classList.toggle('open', d >= 1));
-    document.querySelectorAll('li.node.has-children').forEach(li => {
-      const nd = parseInt(li.dataset.d, 10);
-      li.classList.toggle('open', nd < d);
-    });
-  }
-  depthEl.addEventListener('input', e => applyDepth(parseInt(e.target.value, 10)));
-  document.getElementById('depthDownBtn').addEventListener('click', () => {
-    applyDepth(parseInt(depthEl.value, 10) - 1);
-  });
-  document.getElementById('depthUpBtn').addEventListener('click', () => {
-    applyDepth(parseInt(depthEl.value, 10) + 1);
-  });
-  applyDepth(parseInt(depthEl.value, 10));
-
+  // Sigils toggle (also persisted)
   const sigilsBtn = document.getElementById('sigilsBtn');
+  const sigilsOn = (localStorage.getItem(SIGILS_KEY) ?? '1') === '1';
+  sigilsBtn.classList.toggle('on', sigilsOn);
+  document.body.classList.toggle('no-sigils', !sigilsOn);
   sigilsBtn.addEventListener('click', () => {
     const on = sigilsBtn.classList.toggle('on');
     document.body.classList.toggle('no-sigils', !on);
+    localStorage.setItem(SIGILS_KEY, on ? '1' : '0');
   });
 
+  // Reset buttons clear overrides
   document.getElementById('collapseAll').addEventListener('click', () => {
-    document.querySelectorAll('.chapter').forEach(c => c.classList.remove('open'));
-    document.querySelectorAll('li.node').forEach(li => li.classList.remove('open'));
+    state.overrides = {};
+    setLevel(1);
   });
   document.getElementById('exposeAll').addEventListener('click', () => {
-    const max = DATA.stats.depth;
-    depthEl.value = max;
-    applyDepth(max);
-    document.querySelectorAll('.chapter').forEach(c => c.classList.add('open'));
-    document.querySelectorAll('li.node.has-children').forEach(li => li.classList.add('open'));
+    state.overrides = {};
+    setLevel(MAX_LEVEL);
   });
+
+  // Initial render reflecting saved state
+  applyAll();
 
   const toTop = document.getElementById('toTop');
   window.addEventListener('scroll', () => {
@@ -571,7 +643,6 @@
   });
   toTop.addEventListener('click', () => window.scrollTo({top: 0, behavior: 'smooth'}));
 
-  const SCALE_KEY = 'lotus-matrix-text-scale';
   const root = document.documentElement;
   function setScale(s) {
     s = Math.max(0.8, Math.min(1.5, s));
